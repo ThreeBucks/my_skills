@@ -1,0 +1,41 @@
+{
+  "name": "ok-skills",
+  "version": "0.1.0",
+  "description": "Selected OK Skills for diagnosis, persistent planning, and architecture review workflows.",
+  "author": {
+    "name": "mxyhi",
+    "url": "https://github.com/mxyhi"
+  },
+  "homepage": "https://github.com/mxyhi/ok-skills",
+  "repository": "https://github.com/mxyhi/ok-skills",
+  "license": "MIT",
+  "keywords": [
+    "debugging",
+    "diagnosis",
+    "planning",
+    "architecture",
+    "skills"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "OK Skills Selected",
+    "shortDescription": "Diagnosis, file-backed planning, and architecture review skills",
+    "longDescription": "A curated subset of OK Skills integrated for hard bug diagnosis, persistent planning files, and architecture improvement reviews.",
+    "developerName": "mxyhi",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Diagnose this bug.",
+      "Plan this multi-step investigation."
+    ],
+    "websiteURL": "https://github.com/mxyhi/ok-skills",
+    "privacyPolicyURL": "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement",
+    "termsOfServiceURL": "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service",
+    "brandColor": "#2563EB",
+    "screenshots": []
+  }
+}

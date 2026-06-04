@@ -1,0 +1,231 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+from pathlib import Path
+from typing import Any
+
+
+def repo_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def expand_path(value: str | Path) -> Path:
+    return Path(value).expanduser().resolve()
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_json(path: Path, data: dict[str, Any], dry_run: bool) -> None:
+    if dry_run:
+        print(f"[dry-run] write {path}")
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def discover_standalone_skills(root: Path) -> list[Path]:
+    skills = []
+    for child in sorted(root.iterdir()):
+        if not child.is_dir() or child.name.startswith("."):
+            continue
+        if (child / ".codex-plugin" / "plugin.json").exists():
+            continue
+        if (child / "SKILL.md").is_file():
+            skills.append(child)
+    return skills
+
+
+def discover_plugins(root: Path) -> list[tuple[Path, dict[str, Any]]]:
+    plugins = []
+    for child in sorted(root.iterdir()):
+        manifest_path = child / ".codex-plugin" / "plugin.json"
+        if not child.is_dir() or not manifest_path.is_file():
+            continue
+        manifest = load_json(manifest_path)
+        name = manifest.get("name")
+        if not isinstance(name, str) or not name:
+            raise SystemExit(f"Invalid plugin manifest name: {manifest_path}")
+        if child.name != name:
+            raise SystemExit(
+                f"Plugin folder name '{child.name}' does not match manifest name '{name}'"
+            )
+        plugins.append((child, manifest))
+    return plugins
+
+
+def remove_path(path: Path, dry_run: bool) -> None:
+    if dry_run:
+        print(f"[dry-run] remove {path}")
+        return
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.is_dir():
+        shutil.rmtree(path)
+
+
+def remove_personal_marketplace_entries(
+    marketplace_path: Path,
+    plugin_names: list[str],
+    dry_run: bool,
+) -> str:
+    marketplace = load_json(marketplace_path)
+    if not marketplace:
+        return "personal"
+
+    plugins = marketplace.get("plugins")
+    if plugins is None:
+        return str(marketplace.get("name") or "personal")
+    if not isinstance(plugins, list):
+        raise SystemExit(f"Invalid marketplace plugins list: {marketplace_path}")
+
+    names = set(plugin_names)
+    kept: list[Any] = []
+    removed: list[str] = []
+    skipped: list[str] = []
+
+    for entry in plugins:
+        if not isinstance(entry, dict) or entry.get("name") not in names:
+            kept.append(entry)
+            continue
+
+        name = str(entry["name"])
+        source = entry.get("source")
+        expected_path = f"./plugins/{name}"
+        if (
+            isinstance(source, dict)
+            and source.get("source") == "local"
+            and source.get("path") == expected_path
+        ):
+            removed.append(name)
+            continue
+
+        kept.append(entry)
+        skipped.append(name)
+
+    marketplace["plugins"] = kept
+    if removed:
+        print("Marketplace entries removed: " + ", ".join(sorted(removed)))
+        write_json(marketplace_path, marketplace, dry_run)
+    elif skipped:
+        print("No matching local marketplace entries removed.")
+
+    for name in sorted(skipped):
+        print(f"Skipped marketplace entry with non-matching source: {name}")
+
+    return str(marketplace.get("name") or "personal")
+
+
+def run_codex_plugin_remove(
+    plugin_names: list[str],
+    marketplace_name: str,
+    dry_run: bool,
+    no_plugin_remove: bool,
+) -> None:
+    if no_plugin_remove or not plugin_names:
+        return
+
+    codex = shutil.which("codex")
+    if codex is None:
+        print("codex CLI not found; plugin remove was skipped.")
+        return
+
+    for name in plugin_names:
+        cmd = [codex, "plugin", "remove", f"{name}@{marketplace_name}"]
+        if dry_run:
+            print("[dry-run] " + " ".join(cmd))
+            continue
+        print("$ " + " ".join(cmd))
+        result = subprocess.run(cmd)
+        if result.returncode != 0:
+            print(f"Warning: codex plugin remove failed for {name}@{marketplace_name}; continuing.")
+
+
+def parse_args() -> argparse.Namespace:
+    home = Path.home()
+    parser = argparse.ArgumentParser(description="Uninstall this skill collection from Codex.")
+    parser.add_argument("--dry-run", action="store_true", help="Print planned actions without deleting files.")
+    parser.add_argument(
+        "--codex-home",
+        default=os.environ.get("CODEX_HOME", str(home / ".codex")),
+        help="Codex home directory. Defaults to $CODEX_HOME or ~/.codex.",
+    )
+    parser.add_argument(
+        "--agents-home",
+        default=os.environ.get("AGENTS_HOME", str(home / ".agents")),
+        help="Agents home directory for personal marketplace. Defaults to $AGENTS_HOME or ~/.agents.",
+    )
+    parser.add_argument(
+        "--plugin-home",
+        default=os.environ.get("CODEX_PLUGIN_HOME", str(home / "plugins")),
+        help="Local plugin directory. Defaults to $CODEX_PLUGIN_HOME or ~/plugins. Use non-default paths with --no-plugin-remove.",
+    )
+    parser.add_argument(
+        "--no-plugin-remove",
+        action="store_true",
+        help="Only remove files and marketplace entries; do not run `codex plugin remove`.",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    root = repo_root()
+    codex_home = expand_path(args.codex_home)
+    skills_home = codex_home / "skills"
+    agents_home = expand_path(args.agents_home)
+    marketplace_path = agents_home / "plugins" / "marketplace.json"
+    plugin_home = expand_path(args.plugin_home)
+    default_plugin_home = expand_path(Path.home() / "plugins")
+
+    if plugin_home != default_plugin_home and not args.no_plugin_remove:
+        raise SystemExit(
+            "Custom --plugin-home is only supported with --no-plugin-remove. "
+            "Codex personal marketplace entries resolve ./plugins/<name> to ~/plugins/<name>."
+        )
+
+    standalone_skills = discover_standalone_skills(root)
+    plugins = discover_plugins(root)
+    plugin_names = [str(manifest["name"]) for _, manifest in plugins]
+    marketplace_name = str(load_json(marketplace_path).get("name") or "personal")
+
+    print(f"Repository: {root}")
+    print(f"Codex skills: {skills_home}")
+    print(f"Codex plugins: {plugin_home}")
+    print(f"Marketplace: {marketplace_path}")
+
+    if plugin_names:
+        print("\nCodex plugin registrations:")
+        for name in plugin_names:
+            print(f"- {name}@{marketplace_name}")
+        run_codex_plugin_remove(plugin_names, marketplace_name, args.dry_run, args.no_plugin_remove)
+
+    if standalone_skills:
+        print("\nStandalone skills:")
+        for skill in standalone_skills:
+            dst = skills_home / skill.name
+            print(f"- {skill.name}")
+            remove_path(dst, args.dry_run)
+
+    if plugin_names:
+        print("\nPlugin bundles:")
+        for name in plugin_names:
+            dst = plugin_home / name
+            print(f"- {name}")
+            remove_path(dst, args.dry_run)
+        remove_personal_marketplace_entries(marketplace_path, plugin_names, args.dry_run)
+
+    print("\nDone. Start a new Codex thread after uninstalling so removed skills and plugins are no longer loaded.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
