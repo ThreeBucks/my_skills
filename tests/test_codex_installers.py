@@ -239,6 +239,63 @@ exit 1
         self.assertIn("codex CLI not found", output)
         self.assertIn("Skipping `codex plugin remove`", output)
 
+    def test_install_resolves_codex_from_vscode_server_extension(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            install_codex = load_script_module("install_codex_vscode", ROOT / "scripts" / "install-codex.py")
+            codex = (
+                tmp
+                / ".vscode-server"
+                / "extensions"
+                / "openai.chatgpt-26.519.32039-linux-x64"
+                / "bin"
+                / "linux-x64"
+                / "codex"
+            )
+            codex.parent.mkdir(parents=True)
+            codex.write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+            codex.chmod(0o755)
+
+            with mock.patch.object(install_codex.shutil, "which", return_value=None):
+                with mock.patch.object(install_codex.Path, "home", return_value=tmp):
+                    with mock.patch.object(install_codex.Path, "is_file", lambda path: path == codex):
+                        with mock.patch.object(
+                            install_codex.os, "access", lambda path, mode: Path(path) == codex
+                        ):
+                            resolved = install_codex.resolve_codex_cli()
+
+            self.assertEqual(resolved, str(codex))
+
+    def test_uninstall_resolves_codex_from_vscode_agent_folder(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            uninstall_codex = load_script_module(
+                "uninstall_codex_vscode", ROOT / "scripts" / "uninstall-codex.py"
+            )
+            agent_folder = tmp / "custom-vscode-server"
+            codex = (
+                agent_folder
+                / "extensions"
+                / "openai.chatgpt-26.519.32039-linux-arm64"
+                / "bin"
+                / "linux-arm64"
+                / "codex"
+            )
+            codex.parent.mkdir(parents=True)
+            codex.write_text("#!/usr/bin/env sh\n", encoding="utf-8")
+            codex.chmod(0o755)
+
+            with mock.patch.dict(os.environ, {"VSCODE_AGENT_FOLDER": str(agent_folder)}, clear=False):
+                with mock.patch.object(uninstall_codex.shutil, "which", return_value=None):
+                    with mock.patch.object(uninstall_codex.Path, "home", return_value=tmp):
+                        with mock.patch.object(uninstall_codex.Path, "is_file", lambda path: path == codex):
+                            with mock.patch.object(
+                                uninstall_codex.os, "access", lambda path, mode: Path(path) == codex
+                            ):
+                                resolved = uninstall_codex.resolve_codex_cli()
+
+            self.assertEqual(resolved, str(codex))
+
 
 if __name__ == "__main__":
     unittest.main()

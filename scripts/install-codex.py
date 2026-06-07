@@ -179,13 +179,47 @@ def resolve_codex_cli() -> str | None:
     if which_codex:
         candidates.append(Path(which_codex))
 
+    candidates.extend(iter_vscode_codex_cli_candidates(Path.home()))
     candidates.append(Path("/Applications/Codex.app/Contents/Resources/codex"))
-    candidates.extend(Path.home().glob(".vscode/extensions/openai.chatgpt-*/bin/macos-*/codex"))
 
     for candidate in candidates:
         if candidate.is_file() and os.access(candidate, os.X_OK):
             return str(candidate)
     return None
+
+
+def iter_vscode_codex_cli_candidates(home: Path) -> list[Path]:
+    roots: list[Path] = []
+    agent_folder = os.environ.get("VSCODE_AGENT_FOLDER")
+    if agent_folder:
+        roots.append(Path(agent_folder).expanduser() / "extensions")
+
+    extensions_dir = os.environ.get("VSCODE_EXTENSIONS")
+    if extensions_dir:
+        roots.append(Path(extensions_dir).expanduser())
+
+    roots.extend(
+        [
+            home / ".vscode" / "extensions",
+            home / ".vscode-server" / "extensions",
+            home / ".vscode-server-insiders" / "extensions",
+            home / ".vscode-remote" / "extensions",
+        ]
+    )
+
+    candidates: list[Path] = []
+    seen_roots: set[Path] = set()
+    for root in roots:
+        root = root.expanduser()
+        if root in seen_roots or not root.is_dir():
+            continue
+        seen_roots.add(root)
+        for extension in sorted(root.glob("openai.chatgpt-*"), reverse=True):
+            if not extension.is_dir():
+                continue
+            for binary_name in ("codex", "codex.exe"):
+                candidates.extend(sorted(extension.glob(f"bin/**/{binary_name}"), reverse=True))
+    return candidates
 
 
 def update_installed_plugin_manifest(plugin_dir: Path, stamp: str, dry_run: bool) -> None:

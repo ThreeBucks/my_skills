@@ -21,9 +21,20 @@
 - 将根目录下的独立 skills 复制到 `${CODEX_HOME:-~/.codex}/skills`。
 - 将 Codex plugin bundles 复制到 `~/plugins`，更新
   `${AGENTS_HOME:-~/.agents}/plugins/marketplace.json`，并在检测到
-  `codex` CLI 时执行 `codex plugin add <plugin>@personal`。
+  `codex` CLI 时执行 `codex plugin add <plugin>@personal` 做正式注册。
 
-如果 `codex` CLI 不在 `PATH`，脚本会尝试常见的 Codex.app 和 VSCode extension 路径。仍找不到时，脚本不会失败：它会继续完成 skills、plugin 文件和 marketplace 元数据同步，并跳过 `codex plugin add`。这适合远端机器只通过 VSCode 插件使用 Codex、没有单独安装 `codex` CLI 的场景。
+如果 `codex` CLI 不在 `PATH`，脚本会继续尝试这些位置：
+
+- `CODEX_CLI_PATH`
+- `VSCODE_AGENT_FOLDER/extensions/openai.chatgpt-*/bin/**/codex`
+- `VSCODE_EXTENSIONS/openai.chatgpt-*/bin/**/codex`
+- `~/.vscode/extensions/openai.chatgpt-*/bin/**/codex`
+- `~/.vscode-server/extensions/openai.chatgpt-*/bin/**/codex`
+- `~/.vscode-server-insiders/extensions/openai.chatgpt-*/bin/**/codex`
+- `~/.vscode-remote/extensions/openai.chatgpt-*/bin/**/codex`
+- macOS 的 `/Applications/Codex.app/Contents/Resources/codex`
+
+仍找不到时，脚本不会失败：它会继续完成 skills、plugin 文件和 marketplace 元数据同步，并跳过 `codex plugin add`。这种情况下独立 skills 会安装好，但 plugin bundles 不会完成 Codex 正式注册。远端安装 plugin 时建议使用 `--require-codex-cli`，这样找不到 VSCode 里的 `codex` 会直接报错，避免误以为 plugin 已注册。
 
 如果远端确实有 `codex` CLI 但脚本没找到，可以显式指定：
 
