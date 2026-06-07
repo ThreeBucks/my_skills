@@ -6,8 +6,12 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
+
+MARKER_FILE = ".my-skills-install.json"
+INSTALLER_ID = "my_skills/install-codex.sh"
 
 
 def repo_root() -> Path:
@@ -30,6 +34,55 @@ def write_json(path: Path, data: dict[str, Any], dry_run: bool) -> None:
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def marker_payload(root: Path, source_name: str, kind: str) -> dict[str, str]:
+    return {
+        "installed_by": INSTALLER_ID,
+        "source_repo": str(root),
+        "source_name": source_name,
+        "kind": kind,
+    }
+
+
+def read_marker(path: Path) -> dict[str, Any] | None:
+    marker_path = path / MARKER_FILE
+    if not marker_path.is_file():
+        return None
+    try:
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(marker, dict):
+        return None
+    return marker
+
+
+def is_managed_path(path: Path, root: Path, source_name: str, kind: str) -> bool:
+    marker = read_marker(path)
+    if marker is None:
+        return False
+    expected = marker_payload(root, source_name, kind)
+    return all(marker.get(key) == value for key, value in expected.items())
+
+
+def resolve_codex_cli() -> str | None:
+    candidates: list[Path] = []
+    env_path = os.environ.get("CODEX_CLI_PATH")
+    if env_path:
+        candidates.append(Path(env_path).expanduser())
+
+    which_codex = shutil.which("codex")
+    if which_codex:
+        candidates.append(Path(which_codex))
+
+    candidates.append(Path("/Applications/Codex.app/Contents/Resources/codex"))
+    candidates.extend(Path.home().glob(".vscode/extensions/openai.chatgpt-*/bin/macos-*/codex"))
+
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
 
 
 def discover_standalone_skills(root: Path) -> list[Path]:
@@ -62,14 +115,27 @@ def discover_plugins(root: Path) -> list[tuple[Path, dict[str, Any]]]:
     return plugins
 
 
-def remove_path(path: Path, dry_run: bool) -> None:
+def remove_path(
+    path: Path,
+    root: Path,
+    source_name: str,
+    kind: str,
+    dry_run: bool,
+    force: bool,
+) -> bool:
+    if not path.exists() and not path.is_symlink():
+        return False
+    if not force and not (path.is_dir() and is_managed_path(path, root, source_name, kind)):
+        print(f"Skipped unmanaged {kind}: {path}")
+        return False
     if dry_run:
         print(f"[dry-run] remove {path}")
-        return
+        return True
     if path.is_symlink() or path.is_file():
         path.unlink()
     elif path.is_dir():
         shutil.rmtree(path)
+    return True
 
 
 def remove_personal_marketplace_entries(
@@ -133,10 +199,12 @@ def run_codex_plugin_remove(
     if no_plugin_remove or not plugin_names:
         return
 
-    codex = shutil.which("codex")
+    codex = resolve_codex_cli()
     if codex is None:
-        print("codex CLI not found; plugin remove was skipped.")
-        return
+        raise SystemExit(
+            "codex CLI not found. Set CODEX_CLI_PATH, add codex to PATH, "
+            "or rerun with --no-plugin-remove to only remove files and marketplace metadata."
+        )
 
     for name in plugin_names:
         cmd = [codex, "plugin", "remove", f"{name}@{marketplace_name}"]
@@ -173,10 +241,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Only remove files and marketplace entries; do not run `codex plugin remove`.",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Remove same-named targets even when they do not have this repository's install marker.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
+    sys.stdout.reconfigure(line_buffering=True)
     args = parse_args()
     root = repo_root()
     codex_home = expand_path(args.codex_home)
@@ -202,25 +276,30 @@ def main() -> int:
     print(f"Codex plugins: {plugin_home}")
     print(f"Marketplace: {marketplace_path}")
 
-    if plugin_names:
-        print("\nCodex plugin registrations:")
-        for name in plugin_names:
-            print(f"- {name}@{marketplace_name}")
-        run_codex_plugin_remove(plugin_names, marketplace_name, args.dry_run, args.no_plugin_remove)
-
     if standalone_skills:
         print("\nStandalone skills:")
         for skill in standalone_skills:
             dst = skills_home / skill.name
             print(f"- {skill.name}")
-            remove_path(dst, args.dry_run)
+            remove_path(dst, root, skill.name, "skill", args.dry_run, args.force)
 
     if plugin_names:
         print("\nPlugin bundles:")
         for name in plugin_names:
             dst = plugin_home / name
             print(f"- {name}")
-            remove_path(dst, args.dry_run)
+            remove_path(dst, root, name, "plugin", args.dry_run, args.force)
+
+    if plugin_names:
+        print("\nCodex plugin registrations:")
+        for name in plugin_names:
+            print(f"- {name}@{marketplace_name}")
+        run_codex_plugin_remove(
+            plugin_names,
+            marketplace_name,
+            args.dry_run,
+            args.no_plugin_remove,
+        )
         remove_personal_marketplace_entries(marketplace_path, plugin_names, args.dry_run)
 
     print("\nDone. Start a new Codex thread after uninstalling so removed skills and plugins are no longer loaded.")

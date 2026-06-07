@@ -15,11 +15,15 @@ from typing import Any
 IGNORE_NAMES = {
     ".git",
     ".DS_Store",
+    ".my-skills-install.json",
     "__pycache__",
     ".pytest_cache",
     ".mypy_cache",
     ".ruff_cache",
 }
+
+MARKER_FILE = ".my-skills-install.json"
+INSTALLER_ID = "my_skills/install-codex.sh"
 
 
 def repo_root() -> Path:
@@ -44,6 +48,36 @@ def write_json(path: Path, data: dict[str, Any], dry_run: bool) -> None:
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def marker_payload(root: Path, source_name: str, kind: str) -> dict[str, str]:
+    return {
+        "installed_by": INSTALLER_ID,
+        "source_repo": str(root),
+        "source_name": source_name,
+        "kind": kind,
+    }
+
+
+def read_marker(path: Path) -> dict[str, Any] | None:
+    marker_path = path / MARKER_FILE
+    if not marker_path.is_file():
+        return None
+    try:
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(marker, dict):
+        return None
+    return marker
+
+
+def is_managed_path(path: Path, root: Path, source_name: str, kind: str) -> bool:
+    marker = read_marker(path)
+    if marker is None:
+        return False
+    expected = marker_payload(root, source_name, kind)
+    return all(marker.get(key) == value for key, value in expected.items())
+
+
 def copy_ignore(_: str, names: list[str]) -> set[str]:
     ignored = set()
     for name in names:
@@ -52,9 +86,32 @@ def copy_ignore(_: str, names: list[str]) -> set[str]:
     return ignored
 
 
-def replace_tree(src: Path, dst: Path, dry_run: bool) -> None:
+def ensure_can_replace(dst: Path, root: Path, source_name: str, kind: str, force: bool) -> None:
+    if not dst.exists() and not dst.is_symlink():
+        return
+    if force:
+        return
+    if dst.is_dir() and is_managed_path(dst, root, source_name, kind):
+        return
+    raise SystemExit(
+        f"Refusing to overwrite existing {kind} without current-repo marker: {dst}. "
+        "Use --force to take ownership and replace it."
+    )
+
+
+def replace_tree(
+    src: Path,
+    dst: Path,
+    root: Path,
+    source_name: str,
+    kind: str,
+    dry_run: bool,
+    force: bool,
+) -> None:
+    ensure_can_replace(dst, root, source_name, kind, force)
     if dry_run:
         print(f"[dry-run] sync {src} -> {dst}")
+        print(f"[dry-run] write {dst / MARKER_FILE}")
         return
 
     dst.parent.mkdir(parents=True, exist_ok=True)
@@ -63,6 +120,10 @@ def replace_tree(src: Path, dst: Path, dry_run: bool) -> None:
         shutil.rmtree(tmp)
 
     shutil.copytree(src, tmp, ignore=copy_ignore)
+    (tmp / MARKER_FILE).write_text(
+        json.dumps(marker_payload(root, source_name, kind), indent=2) + "\n",
+        encoding="utf-8",
+    )
 
     if dst.exists() or dst.is_symlink():
         if dst.is_symlink() or dst.is_file():
@@ -106,6 +167,25 @@ def discover_plugins(root: Path) -> list[tuple[Path, dict[str, Any]]]:
 def with_cachebuster(version: str, stamp: str) -> str:
     base = version.split("+", 1)[0]
     return f"{base}+codex.local-{stamp}"
+
+
+def resolve_codex_cli() -> str | None:
+    candidates: list[Path] = []
+    env_path = os.environ.get("CODEX_CLI_PATH")
+    if env_path:
+        candidates.append(Path(env_path).expanduser())
+
+    which_codex = shutil.which("codex")
+    if which_codex:
+        candidates.append(Path(which_codex))
+
+    candidates.append(Path("/Applications/Codex.app/Contents/Resources/codex"))
+    candidates.extend(Path.home().glob(".vscode/extensions/openai.chatgpt-*/bin/macos-*/codex"))
+
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
 
 
 def update_installed_plugin_manifest(plugin_dir: Path, stamp: str, dry_run: bool) -> None:
@@ -177,10 +257,12 @@ def run_codex_plugin_add(
     if no_plugin_add or not plugin_names:
         return
 
-    codex = shutil.which("codex")
+    codex = resolve_codex_cli()
     if codex is None:
-        print("codex CLI not found; plugin files and marketplace were synced, but plugin add was skipped.")
-        return
+        raise SystemExit(
+            "codex CLI not found. Set CODEX_CLI_PATH, add codex to PATH, "
+            "or rerun with --no-plugin-add to only sync files and marketplace metadata."
+        )
 
     for name in plugin_names:
         cmd = [codex, "plugin", "add", f"{name}@{marketplace_name}"]
@@ -189,6 +271,32 @@ def run_codex_plugin_add(
             continue
         print("$ " + " ".join(cmd))
         subprocess.run(cmd, check=True)
+
+    verify_codex_plugins_installed(codex, plugin_names, marketplace_name)
+
+
+def verify_codex_plugins_installed(codex: str, plugin_names: list[str], marketplace_name: str) -> None:
+    result = subprocess.run(
+        [codex, "plugin", "list"],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    output = result.stdout
+    missing: list[str] = []
+
+    for name in plugin_names:
+        selector = f"{name}@{marketplace_name}"
+        matching_lines = [line for line in output.splitlines() if selector in line]
+        if not any("(installed" in line for line in matching_lines):
+            missing.append(selector)
+
+    if missing:
+        raise SystemExit(
+            "codex plugin add completed, but these plugins were not reported as installed: "
+            + ", ".join(missing)
+            + ". Run `codex plugin list` for details."
+        )
 
 
 def parse_args() -> argparse.Namespace:
@@ -215,10 +323,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Only sync plugin files and marketplace; do not run `codex plugin add`.",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite same-named targets that do not have this repository's install marker.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
+    sys.stdout.reconfigure(line_buffering=True)
     args = parse_args()
     root = repo_root()
     codex_home = expand_path(args.codex_home)
@@ -248,7 +362,7 @@ def main() -> int:
         for skill in standalone_skills:
             dst = skills_home / skill.name
             print(f"- {skill.name}")
-            replace_tree(skill, dst, args.dry_run)
+            replace_tree(skill, dst, root, skill.name, "skill", args.dry_run, args.force)
 
     plugin_names: list[str] = []
     if plugins:
@@ -257,7 +371,7 @@ def main() -> int:
             name = str(manifest["name"])
             dst = plugin_home / name
             print(f"- {name}")
-            replace_tree(plugin, dst, args.dry_run)
+            replace_tree(plugin, dst, root, name, "plugin", args.dry_run, args.force)
             update_installed_plugin_manifest(dst, stamp, args.dry_run)
             plugin_names.append(name)
 
