@@ -253,16 +253,22 @@ def run_codex_plugin_add(
     marketplace_name: str,
     dry_run: bool,
     no_plugin_add: bool,
+    require_codex_cli: bool = False,
 ) -> None:
     if no_plugin_add or not plugin_names:
         return
 
     codex = resolve_codex_cli()
     if codex is None:
-        raise SystemExit(
-            "codex CLI not found. Set CODEX_CLI_PATH, add codex to PATH, "
-            "or rerun with --no-plugin-add to only sync files and marketplace metadata."
+        message = (
+            "codex CLI not found. Synced skill files, plugin files, and marketplace "
+            "metadata. Skipping `codex plugin add`. If plugins do not load in your "
+            "Codex runtime, install or expose the codex CLI, set CODEX_CLI_PATH, and rerun."
         )
+        if require_codex_cli:
+            raise SystemExit(message)
+        print(f"Warning: {message}")
+        return
 
     for name in plugin_names:
         cmd = [codex, "plugin", "add", f"{name}@{marketplace_name}"]
@@ -324,6 +330,11 @@ def parse_args() -> argparse.Namespace:
         help="Only sync plugin files and marketplace; do not run `codex plugin add`.",
     )
     parser.add_argument(
+        "--require-codex-cli",
+        action="store_true",
+        help="Fail when codex CLI is unavailable instead of skipping `codex plugin add`.",
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
         help="Overwrite same-named targets that do not have this repository's install marker.",
@@ -376,7 +387,13 @@ def main() -> int:
             plugin_names.append(name)
 
         marketplace_name = update_personal_marketplace(marketplace_path, plugin_names, args.dry_run)
-        run_codex_plugin_add(plugin_names, marketplace_name, args.dry_run, args.no_plugin_add)
+        run_codex_plugin_add(
+            plugin_names,
+            marketplace_name,
+            args.dry_run,
+            args.no_plugin_add,
+            args.require_codex_cli,
+        )
 
     print("\nDone. Start a new Codex thread after installing so new skills and plugins are picked up.")
     return 0

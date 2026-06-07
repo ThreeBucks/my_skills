@@ -195,16 +195,22 @@ def run_codex_plugin_remove(
     marketplace_name: str,
     dry_run: bool,
     no_plugin_remove: bool,
+    require_codex_cli: bool = False,
 ) -> None:
     if no_plugin_remove or not plugin_names:
         return
 
     codex = resolve_codex_cli()
     if codex is None:
-        raise SystemExit(
-            "codex CLI not found. Set CODEX_CLI_PATH, add codex to PATH, "
-            "or rerun with --no-plugin-remove to only remove files and marketplace metadata."
+        message = (
+            "codex CLI not found. Removing local files and marketplace metadata; "
+            "Skipping `codex plugin remove`. If a Codex runtime still shows these plugins, "
+            "install or expose the codex CLI, set CODEX_CLI_PATH, and rerun."
         )
+        if require_codex_cli:
+            raise SystemExit(message)
+        print(f"Warning: {message}")
+        return
 
     for name in plugin_names:
         cmd = [codex, "plugin", "remove", f"{name}@{marketplace_name}"]
@@ -240,6 +246,11 @@ def parse_args() -> argparse.Namespace:
         "--no-plugin-remove",
         action="store_true",
         help="Only remove files and marketplace entries; do not run `codex plugin remove`.",
+    )
+    parser.add_argument(
+        "--require-codex-cli",
+        action="store_true",
+        help="Fail when codex CLI is unavailable instead of skipping `codex plugin remove`.",
     )
     parser.add_argument(
         "--force",
@@ -299,6 +310,7 @@ def main() -> int:
             marketplace_name,
             args.dry_run,
             args.no_plugin_remove,
+            args.require_codex_cli,
         )
         remove_personal_marketplace_entries(marketplace_path, plugin_names, args.dry_run)
 

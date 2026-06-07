@@ -1,16 +1,29 @@
 from __future__ import annotations
 
+import contextlib
+import importlib.util
+import io
 import os
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
 INSTALL = ROOT / "install-codex.sh"
 UNINSTALL = ROOT / "uninstall-codex.sh"
 MARKER = ".my-skills-install.json"
+
+
+def load_script_module(name: str, script: Path):
+    spec = importlib.util.spec_from_file_location(name, script)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load {script}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def run_script(script: Path, tmp: Path, *extra: str) -> subprocess.CompletedProcess[str]:
@@ -199,6 +212,32 @@ exit 1
 
             self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("not reported as installed", result.stdout + result.stderr)
+
+    def test_install_skips_plugin_add_when_codex_cli_is_missing(self) -> None:
+        install_codex = load_script_module("install_codex", ROOT / "scripts" / "install-codex.py")
+
+        stdout = io.StringIO()
+        with mock.patch.object(install_codex, "resolve_codex_cli", return_value=None):
+            with contextlib.redirect_stdout(stdout):
+                install_codex.run_codex_plugin_add(["ok-skills"], "personal", False, False)
+
+        output = stdout.getvalue()
+        self.assertIn("codex CLI not found", output)
+        self.assertIn("Skipping `codex plugin add`", output)
+
+    def test_uninstall_skips_plugin_remove_when_codex_cli_is_missing(self) -> None:
+        uninstall_codex = load_script_module(
+            "uninstall_codex", ROOT / "scripts" / "uninstall-codex.py"
+        )
+
+        stdout = io.StringIO()
+        with mock.patch.object(uninstall_codex, "resolve_codex_cli", return_value=None):
+            with contextlib.redirect_stdout(stdout):
+                uninstall_codex.run_codex_plugin_remove(["ok-skills"], "personal", False, False)
+
+        output = stdout.getvalue()
+        self.assertIn("codex CLI not found", output)
+        self.assertIn("Skipping `codex plugin remove`", output)
 
 
 if __name__ == "__main__":

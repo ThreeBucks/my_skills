@@ -23,7 +23,19 @@
   `${AGENTS_HOME:-~/.agents}/plugins/marketplace.json`，并在检测到
   `codex` CLI 时执行 `codex plugin add <plugin>@personal`。
 
-如果 `codex` CLI 不在 `PATH`，脚本会尝试常见的 Codex.app 和 VSCode extension 路径；仍找不到时会报错。可以通过 `CODEX_CLI_PATH=/path/to/codex ./install-codex.sh` 显式指定。
+如果 `codex` CLI 不在 `PATH`，脚本会尝试常见的 Codex.app 和 VSCode extension 路径。仍找不到时，脚本不会失败：它会继续完成 skills、plugin 文件和 marketplace 元数据同步，并跳过 `codex plugin add`。这适合远端机器只通过 VSCode 插件使用 Codex、没有单独安装 `codex` CLI 的场景。
+
+如果远端确实有 `codex` CLI 但脚本没找到，可以显式指定：
+
+```bash
+CODEX_CLI_PATH=/path/to/codex ./install-codex.sh
+```
+
+如果你希望找不到 `codex` CLI 时直接失败，使用：
+
+```bash
+./install-codex.sh --require-codex-cli
+```
 
 如果只想同步文件和 marketplace 元数据，不执行 `codex plugin add`，使用：
 
@@ -61,7 +73,13 @@
 - 删除 `~/plugins` 下与当前仓库同名的 Codex plugin bundles。
 - 从 `${AGENTS_HOME:-~/.agents}/plugins/marketplace.json` 中移除对应的本地 plugin 条目，并在检测到 `codex` CLI 时执行 `codex plugin remove <plugin>@personal`。
 
-如果 `codex` CLI 不在 `PATH`，可以通过 `CODEX_CLI_PATH=/path/to/codex ./uninstall-codex.sh` 显式指定；仍找不到时脚本会报错，避免只删文件但留下 Codex registration。
+如果 `codex` CLI 不在 `PATH`，可以通过 `CODEX_CLI_PATH=/path/to/codex ./uninstall-codex.sh` 显式指定；仍找不到时脚本不会失败，会继续删除本地文件和 marketplace 元数据，并跳过 `codex plugin remove`。
+
+如果你希望找不到 `codex` CLI 时直接失败，使用：
+
+```bash
+./uninstall-codex.sh --require-codex-cli
+```
 
 如果只想删除文件和 marketplace 元数据，不执行 `codex plugin remove`，使用：
 
@@ -82,6 +100,7 @@
 ## 清单
 
 - `engineering-workflow-baseline`：个人工程工作流底座。
+- `rtk`：默认 shell 命令包装规则，要求优先使用 `rtk` 和 `rtk proxy`。
 - `doc-coauthoring`：文档协作与共创工作流。
 - `karpathy-guidelines`：务实、外科式修改导向的编码准则。
 - `superpowers`：来自 `obra/superpowers` 的上游 Superpowers 整体 bundle。
