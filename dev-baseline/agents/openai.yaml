@@ -1,0 +1,4 @@
+interface:
+  display_name: "开发底座"
+  short_description: "默认开发协作规则"
+  default_prompt: "使用 $dev-baseline 初始化本次开发任务；按用户偏好的中文、证据优先、先方案后实现、小步改动和最小充分验证方式工作。"
