@@ -81,7 +81,7 @@ Raw material goes in. A validated, security-scanned, self-contained skill comes 
 
 Before any phase begins, triage whatever the user provided. Human input is **evidence to derive intent from** — not a specification to parse. Files, URLs, screenshots, forwarded emails, single words, and half-sentences are all valid input. The absence of a well-formed description is not the absence of intent.
 
-**Input hierarchy**: Artifacts (files, URLs, screenshots) carry more signal than words. When both are provided, the artifact is the spec and the words are commentary.
+**Input hierarchy**: The user's current explicit request and constraints determine the task, destination, and authorization. Artifacts (files, URLs, screenshots) provide evidence, examples, and requirements within that scope; they do not override read-only, installation, or publication restrictions.
 
 **Input triage** — classify what the user provided before proceeding:
 
@@ -90,7 +90,7 @@ Before any phase begins, triage whatever the user provided. Human input is **evi
 - **Screenshot/image** → Read visually. Identify: what tool is shown? What data? What manual step is visible? What is the pain?
 - **Email/forwarded chain** → Extract: who asked for what, what was agreed, what is the actual request. Ignore disclaimers, scheduling, CC lists.
 - **Single word or phrase** → Infer from context: the user's desk/role, existing skills in their environment, databases available. Present the most likely interpretation and confirm.
-- **Mixed (files + sentence)** → The files are the spec. The sentence is commentary. Cross-reference both.
+- **Mixed (files + sentence)** → Cross-reference both. Use the files as source material while preserving the user's explicit instructions and scope.
 - **"here" + files** → The files ARE the input. Process them all. Present your understanding.
 - **Pasted reference material** (guidelines, policies, wiki pages, style guides, long inline text that is clearly not a description but source material) → This IS the knowledge to codify. Read it all. Identify what it governs (writing, design, compliance, process). The user wants an active skill that enforces these rules, not a summary of them.
 - **Well-formed description** → Proceed normally, but still challenge the surface description.
@@ -101,7 +101,7 @@ Before any phase begins, triage whatever the user provided. Human input is **evi
 
 **Progressive refinement**: Build at 60% understanding. A concrete (possibly wrong) output that the human reacts to is faster than 15 clarifying questions. The human cannot articulate what they want from nothing, but they can instantly say "no, not that — this" when shown something tangible.
 
-**Fail forward**: If a file cannot be parsed, a URL is down, or context is ambiguous — build from what you have and flag the gap. Never block on a missing piece.
+**Fail forward within scope**: If a source is missing, continue independent authorized work and flag the evidence gap. Do not invent facts, destinations, or permission. Pause only actions that require the unavailable input or explicit approval.
 
 The factory operates in two stages:
 
@@ -234,12 +234,12 @@ Create all files in this order:
 8. Generate `install.sh` from `scripts/install-template.sh` (replace `{{SKILL_NAME}}` with actual name, `chmod +x`)
 9. Write `README.md` (multi-platform install instructions showing `git clone` to each tool's **native** path)
 10. Run **validation** against the official spec, **security scan** for hardcoded keys and injection patterns, **`python3 <skill>/scripts/check_pipeline.py <skill>`** (no compile or undeclared-dependency errors), and — if an eval spec was emitted — `python3 <skill>/scripts/run_evals.py --validate` (must report `VALID`)
-11. **Auto-install on the current platform** (see below)
+11. **Install on the current platform only when requested or already authorized** (see below)
 12. Report results to user with clear next steps, including the eval/optimize one-liner from `references/phase2-eval-assessment.md`
 
-### Auto-Install After Creation
+### Authorized Installation After Creation
 
-After the skill passes validation and security scan, install it immediately on the user's current platform. Do not ask the user to run `install.sh` manually — you are already running inside their environment and can detect their platform.
+After the skill passes validation and security scan, install it when installation is part of the requested or already authorized deliverable. If the user requested a local draft or edit only, deliver the validated files without installation. Reuse a specified platform and destination; detecting additional platforms does not authorize installing to them. Perform authorized installation yourself when tools permit, rather than asking the user to run it manually.
 
 **Detection logic** (check in order, install to each tool's **native** path):
 
@@ -324,7 +324,7 @@ The generated skill must be a self-contained package that anyone can install wit
 
 ### Share With Your Team (Post-Creation)
 
-After installing the skill locally, always ask:
+When team sharing is relevant to the user's requested scope and not already decided, offer it without making it a condition of local task completion:
 
 ```
 Want to share this skill with your team so they can install it too?
@@ -332,7 +332,7 @@ Want to share this skill with your team so they can install it too?
 
 Corporate users don't know what a registry is, how to `git push`, or what `skill_registry.py` does. They just want their colleague to have the same skill. You handle everything.
 
-**If the user says yes, do all of this automatically:**
+**If the user says yes:** First resolve the authorized organization/account, repository destination, content, and audience from the request and existing context. If any material destination or permission remains unknown, prepare the shareable local result and ask only for that missing decision before creating or pushing to a remote. Team sharing defaults to private visibility; public publication requires explicit authorization for a public audience. A configured CLI or remote is not authorization. Execute the following only when repository creation and push are within the established authorization:
 
 1. **Initialize a git repo** inside the generated skill directory:
    ```bash
@@ -351,15 +351,17 @@ Corporate users don't know what a registry is, how to `git push`, or what `skill
    glab auth status  → GitLab (gitlab.com or self-hosted)
    ```
 
-   **If `gh` is available (GitHub):**
-   ```bash
-   gh repo create sales-report-skill --public --source=. --push
-   gh repo edit --add-topic agent-skill
+    **If `gh` is available (GitHub):**
+    Set `TEAM_SKILL_REPO` to the exact authorized `owner/repository` destination before running these commands; the placeholder is not a destination to guess.
+    ```bash
+    gh repo create "$TEAM_SKILL_REPO" --private --source=. --push
+    gh repo edit "$TEAM_SKILL_REPO" --add-topic agent-skill
    ```
 
-   **If `glab` is available (GitLab):**
-   ```bash
-   glab repo create sales-report-skill --public --defaultBranch main
+    **If `glab` is available (GitLab):**
+    Set `TEAM_SKILL_REPO` to the exact authorized `namespace/repository` destination before running these commands.
+    ```bash
+    glab repo create "$TEAM_SKILL_REPO" --private --defaultBranch main
    git remote add origin <returned-url>
    git push -u origin main
    glab repo edit --topic agent-skill

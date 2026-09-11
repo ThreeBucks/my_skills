@@ -1,0 +1,97 @@
+--- /Users/bytedance/.codex/AGENTS.md.before
++++ /Users/bytedance/.codex/AGENTS.md
+@@ -1 +1,12 @@
+ @/Users/bytedance/.codex/RTK.md
++
++## 自主推进、批准与完成
++
++- 先识别任务目标、交付范围、已有批准和明确禁止事项。
++- 已批准方案内的实现、必要验证和同范围修正持续推进；不因会话续接、阶段切换或加载其他 Skill 重复请求相同批准。
++- 先用当前上下文、代码和可用工具解决不确定性。只有会实质改变结果或权限边界、且无法合理推断的问题才请求澄清。
++- 等待澄清或批准时，仅暂停依赖该决定的操作，继续独立且已获授权的工作。
++- 保留适用规则中的明确批准要求。沉默、超时、工具可用或对任务目标的概括性认可，均不替代所要求的具体批准；超出已有批准范围的变更仍需确认。
++- 普通命令失败和测试失败先诊断；不得将未验证或失败的结果报告为成功，不得为了继续推进绕过权限、发布或质量门禁。
++- 按用户请求完成交付；不把已有明确选择重新变成“是否继续”的问题，也不把本地完成自动扩展为安装、推送、合并、发布或对外发送。
++- 用户要求只读或先审阅建议时，不创建计划文件、不修改配置、不执行部署。读取 Skill 作为审阅对象不代表启动其创建、安装或发布流程。
+--- /Users/bytedance/.codex/RTK.md.before
++++ /Users/bytedance/.codex/RTK.md
+@@ -5,6 +5,8 @@
+ ## Rule
+ 
+ Always prefix shell commands with `rtk`.
++
++Use `rtk proxy` when the task needs raw command behavior or unfiltered output. If `rtk` is unavailable, explain that briefly and use the appropriate available command without it; wrapper availability does not block otherwise authorized work.
+ 
+ Examples:
+ 
+--- /Users/bytedance/.codex/skills/.system/openai-docs/SKILL.md.before
++++ /Users/bytedance/.codex/skills/.system/openai-docs/SKILL.md
+@@ -9,9 +9,11 @@
+ 
+ Provide current, cited OpenAI product, API, model, and Codex guidance. Read zero or one primary reference.
+ 
++For an audit limited to the user's local instruction files, skills, or supplied configuration, inspect that material first. Reading those files does not itself require an official-documentation search. Apply the official-source workflow below when a current product fact needs verification beyond the available local evidence; preserve the user's read-only and proposed-edits-only boundaries.
++
+ **First substantive action:** Search the user's exact requested official OpenAI documentation topic and any explicitly named model using a concise, topic-specific query of 2-6 essential terms. When an already-available direct official documentation search and page-retrieval capability is present, use it first: search, then fetch or open the matching official page before general web search. Otherwise, immediately use official-domain web search, then actually open or fetch the relevant official page. Complete this source order before reading a reference, inspecting local or repository files, running a Codex manual or model resolver, drafting a plan, or answering from memory. Use the actual fetched page, not a search snippet or an unopened link. If one official search or page does not establish the answer, search another appropriate official domain and actually open or fetch the result. Preserve the exact requested model; never substitute a newer model.
+ 
+-**Only exception:** An explicitly requested, genuinely broad, cross-topic Codex setup, orientation, or system-map synthesis may use the manual first when shell execution and an allowed temporary cache are available. A specific Codex feature, setting, command, error, model, or requested citation remains docs-first. Mixed Chat/Work/Codex comparisons are official documentation questions, not manual-first Codex requests.
++**Manual-first exception for product guidance:** An explicitly requested, genuinely broad, cross-topic Codex setup, orientation, or system-map synthesis may use the manual first when shell execution and an allowed temporary cache are available. A specific Codex feature, setting, command, error, model, or requested citation remains docs-first. Mixed Chat/Work/Codex comparisons are official documentation questions, not manual-first Codex requests.
+ 
+ For generic software tasks, answer the software task directly. OpenAI implementation, debugging, SDK, API, prompting, agent, and eval requests are not generic.
+ 
+--- /Users/bytedance/.codex/plugins/cache/openai-curated-remote/notion/0.1.8/skills/notion-research-documentation/SKILL.md.before
++++ /Users/bytedance/.codex/plugins/cache/openai-curated-remote/notion/0.1.8/skills/notion-research-documentation/SKILL.md
+@@ -10,29 +10,29 @@
+ Pull relevant Notion pages, synthesize findings, and publish clear briefs or reports (with citations and links to sources).
+ 
+ ## Quick start
+-1) Find sources with `Notion:search` using targeted queries; confirm scope with the user.
++1) Find sources with `Notion:search` using targeted queries within the established scope; clarify only material scope or target ambiguity that remains after inspecting context.
+ 2) Fetch pages via `Notion:fetch`; note key sections and capture citations (`reference/citations.md`).
+ 3) Choose output format (brief, summary, comparison, comprehensive report) using `reference/format-selection-guide.md`.
+ 4) Draft in Notion with `Notion:notion-create-pages` using the matching template (quick, summary, comparison, comprehensive).
+ 5) Link sources and add a references/citations section; update as new info arrives with `Notion:notion-update-page`.
+ 
+ ## Tool-call guardrails
+-- Notion tool availability can vary by workspace. If a Notion MCP call returns `Tool <name> not found`, treat that tool as unavailable for the rest of the current task. Do not retry it with different arguments or call it again later; use `Notion:search` and `Notion:fetch` where sufficient.
++- Notion tool availability can vary by workspace. If a Notion MCP call returns `Tool <name> not found`, treat it as unavailable and do not blindly retry with different arguments; use available search/fetch tools where sufficient. Rediscover once if the connection or advertised tool set changes, and resume only tools confirmed available.
+ - Use one literal search query per `Notion:search` call and include `filters: {}` when no narrower filter is needed.
+ - Only fetch Notion page, database, or data-source URLs/IDs. Search results can include external connected-source URLs, which are not valid `Notion:fetch` inputs.
+ - Create output pages with an explicit `parent` and a `pages` array.
+ - When updating an existing report, fetch it first and use `Notion:notion-update-page` with `update_content`, `properties: {}`, and search-and-replace pairs. For property-only updates, use `update_properties` with `content_updates: []`. The current deployed schema expects both top-level fields even when one is unused. Do not invent insertion-only commands.
+ 
+ ## Workflow
+-### 0) If Notion tools are unavailable, pause and ask the user to connect the Notion app:
++### 0) If Notion tools are unavailable, pause only Notion-dependent steps and ask the user to connect the Notion app:
+ 1. Enable the bundled Notion app for this plugin or session.
+ 2. Complete the Notion auth flow if prompted.
+ 3. Start a new session if the tools still do not appear.
+ 
+-After the app is connected, finish your answer and tell the user to retry so they can continue with Step 1.
++Continue independent work supported by already available sources while connection is unavailable. Once the required tools become available in the current session, resume Step 1 directly; ask for a new session only if the tools still cannot be discovered. Connection does not expand permission to read or write beyond the requested scope.
+ 
+ ### 1) Gather sources
+-- Search first (`Notion:search`); refine queries, and ask the user to confirm if multiple results appear.
++- Search first (`Notion:search`) within the authorized scope. Match results using supplied links, titles, project context, and content; research may use multiple relevant sources. Ask only when the intended target remains materially ambiguous after inspection, especially before writing to a page. Multiple search hits alone do not require confirmation or expand access authorization.
+ - Fetch relevant pages (`Notion:fetch`), skim for facts, metrics, claims, constraints, and dates.
+ - Track each source URL/ID for later citation; prefer direct quotes for critical facts.
+ 
+--- /Users/bytedance/projects/working-notes/skills/wiki/SKILL.md.before
++++ /Users/bytedance/projects/working-notes/skills/wiki/SKILL.md
+@@ -43,6 +43,7 @@
+ ## 前台/后台原则
+ 
+ - 飞书导入、本地目录导入、代码仓导入、批量编译、同步上游、每日夜间整理等长任务，默认用后台 job 启动，前台只返回 job id 和查看命令。
++- 后台执行与等待结果分别判断。未要求等结果时，明确报告“已入队”或“运行中”，不把启动成功写成任务完成；用户要求“等结果”或“做完后交付”时，保持规定的后台入口并跟踪 job 到最终状态，核对产物和质量检查后再报告成功或失败。
+ - 飞书导入的前台动作只能是 `python3 scripts/wiki_enqueue.py feishu-import <url>`；标题默认由导入脚本通过 Feishu 元数据接口获取。用户明确提供飞书页面上实际看到的标题时可追加 `--title "<标题>"`，但不要要求用户手动补标题；不要在前台直接执行 `park-cli doc export`、`park-cli wiki export`、`scripts/ingest_feishu.py` 或 `scripts/export_feishu_boards.py`，也不要根据正文摘要或 heading 自行起名。
+ - 在线 Sphinx/ReadTheDocs 文档站导入的前台动作只能是 `python3 scripts/wiki_enqueue.py docs-site-import <url>`；不要自行抓网页、清洗 HTML、临时转换 Markdown 或把 `/tmp` 目录当作最终来源。
+ - 代码仓追踪的前台动作只能是 `python3 scripts/wiki_enqueue.py repo-track <git-url>`；不要在 PiCode 前台或后台直接执行 `git clone`、手写 `manifests/tracked-repos.yaml` 或手写 `raw/repos/<name>/metadata.yaml`。
+@@ -51,7 +52,7 @@
+ - 用户已在 `feedback/questions/*.md` 的 `## 裁决` 下填写意见时，前台动作优先使用 `python3 scripts/process_feedback_decisions.py`；下一次 `compile-pending` 也会自动执行该步骤。不要手工修改 raw metadata。
+ - 用户明确要求“导入飞书文档”时，按本 skill 的 Feishu 导入流程执行即可；不要额外加载飞书读取类 skill 去做前台读取或导出。
+ - 单个很小的本地 Markdown 导入、状态查询、索引刷新、frontmatter 校验可以前台执行。
+-- 用户明确要求“现在直接做完”“前台执行”“等结果”时，才同步执行长任务。
++- 用户明确要求等待时同步跟踪后台结果；“前台执行”不能绕过本节规定的专用入队入口、串行锁、权限列表和工程文件保护。
+ - 后台 prompt 必须写明“这是后台 job，请直接执行任务，不要再次调用 `scripts/wiki_job.py`”，避免递归后台化。
+ - 后台 prompt 必须写明“如果脚本失败，不要修复脚本，不要修改 `scripts/`、`skills/`、`docs/` 或配置文件；输出失败报告并退出”。
+ - 编译后台 job 会锁定目标 raw，并使用 `.wiki-jobs/_runtime/agent.lock` 保证同一时间只有一个 PiCode 编译 agent；PiCode 退出后审计 `scripts/`、`skills/`、`docs/`、`.picode/`、`schema.md`、`README.md`、`HANDBOOK.md` 和 `.obsidian/`，这些路径如被改动，job 判定失败。

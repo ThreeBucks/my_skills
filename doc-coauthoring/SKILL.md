@@ -1,6 +1,6 @@
 ---
 name: doc-coauthoring
-description: Guide users through a structured workflow for co-authoring documentation. Use when user wants to write documentation, proposals, technical specs, decision docs, or similar structured content. This workflow helps users efficiently transfer context, refine content through iteration, and verify the doc works for readers. Trigger when user mentions writing docs, creating proposals, drafting specs, or similar documentation tasks.
+description: Use for documentation, proposals, and technical specs. Apply the full interview workflow when the user requests iterative co-authoring; for a requested complete draft with sufficient material, draft directly and clarify only material gaps.
 ---
 
 # Doc Co-Authoring Workflow
@@ -8,6 +8,8 @@ description: Guide users through a structured workflow for co-authoring document
 This skill provides a structured workflow for guiding users through collaborative document creation. Act as an active guide, walking users through three stages: Context Gathering, Refinement & Structure, and Reader Testing.
 
 ## When to Offer This Workflow
+
+Match the requested collaboration mode first. When the user asks for a complete draft and the material is sufficient, produce the draft and perform an appropriate review directly; do not make an interview, section selection, or stage-by-stage approval a prerequisite. Use the full workflow below when the user requests or accepts iterative co-authoring. Reuse answers already supplied and ask only material unresolved questions, never questions invented to reach a quota. Honor an explicit request to skip a stage without asking again. This does not waive approval for connected-source searches or external writes.
 
 **Trigger conditions:**
 - User mentions writing documentation: "write a doc", "draft a proposal", "create a spec", "write up"
@@ -80,8 +82,8 @@ Inform them clarifying questions will be asked once they've done their initial d
   - If integrations not available: Explain lack of access. Suggest they enable connectors in Claude settings, or paste the relevant content directly.
 
 - If user mentions entities/projects that are unknown:
-  - Ask if connected tools should be searched to learn more
-  - Wait for user confirmation before searching
+  - Check whether the user already authorized a connected-source search for this entity and scope; reuse that authorization if so
+  - Otherwise ask and wait for confirmation before searching; do not expand a writing request into an unrestricted search
 
 - As user provides context, track what's being learned and what's still unclear
 
@@ -89,7 +91,7 @@ Inform them clarifying questions will be asked once they've done their initial d
 
 When user signals they've done their initial dump (or after substantial context provided), ask clarifying questions to ensure understanding:
 
-Generate 5-10 numbered questions based on gaps in the context.
+Ask only the material questions still unresolved after reading the available context; skip this step if there are no such gaps.
 
 Inform them they can use shorthand to answer (e.g., "1: yes, 2: see #channel, 3: no because backwards compat"), link to more docs, point to channels to read, or just keep info-dumping. Whatever's most efficient for them.
 
@@ -153,9 +155,9 @@ Confirm the filename has been created and indicate it's time to fill in each sec
 
 ### Step 1: Clarifying Questions
 
-Announce work will begin on the [SECTION NAME] section. Ask 5-10 clarifying questions about what should be included:
+Announce work will begin on the [SECTION NAME] section. Ask only material unresolved questions about what should be included:
 
-Generate 5-10 specific questions based on context and section purpose.
+Base any remaining questions on actual gaps in context and section purpose; skip questions already answered.
 
 Inform them they can answer in shorthand or just indicate what's important to cover.
 
@@ -355,12 +357,12 @@ Announce document completion. Provide a few final tips:
 - Don't try to "sell" the approach - just execute it
 
 **Handling Deviations:**
-- If user wants to skip a stage: Ask if they want to skip this and write freeform
+- If user wants to skip a stage: Honor that choice and continue with the requested mode; do not ask them to confirm it again
 - If user seems frustrated: Acknowledge this is taking longer than expected. Suggest ways to move faster
 - Always give user agency to adjust the process
 
 **Context Management:**
-- Throughout, if context is missing on something mentioned, proactively ask
+- Throughout, resolve missing context from available evidence first; ask only if the gap materially affects the result and cannot reasonably be inferred
 - Don't let gaps accumulate - address them as they come up
 
 **Artifact Management:**

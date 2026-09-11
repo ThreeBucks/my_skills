@@ -9,7 +9,7 @@ description: Use when implementation is complete, all tests pass, and you need t
 
 Guide completion of development work by presenting clear options and handling chosen workflow.
 
-**Core principle:** Verify tests → Detect environment → Present options → Execute choice → Clean up.
+**Core principle:** Verify tests → Detect environment → Resolve authorized delivery → Execute → Apply authorized cleanup.
 
 **Announce at start:** "I'm using the finishing-a-development-branch skill to complete this work."
 
@@ -65,7 +65,11 @@ Or ask: "This branch split from main - is that correct?"
 
 ### Step 4: Present Options
 
-**Normal repo and named-branch worktree — present exactly these 4 options:**
+First read the request and existing approvals. If the delivery choice is already explicit and authorized, proceed to Step 5 without asking again; preserve any separate required approval, such as review of the final diff. A request for a local change does not authorize push, merge, publication, or deletion. If no integration was requested, preserve the local result and report the changes and verification; no menu is needed.
+
+Only ask when the delivery target is materially unresolved and needed to complete the request. In that case use the applicable menu below.
+
+**Normal repo and named-branch worktree — offer these 4 options when a choice is needed:**
 
 ```
 Implementation complete. What would you like to do?
@@ -78,7 +82,7 @@ Implementation complete. What would you like to do?
 Which option?
 ```
 
-**Detached HEAD — present exactly these 3 options:**
+**Detached HEAD — offer these 3 options when a choice is needed:**
 
 ```
 Implementation complete. You're on a detached HEAD (externally managed workspace).
@@ -90,7 +94,7 @@ Implementation complete. You're on a detached HEAD (externally managed workspace
 Which option?
 ```
 
-**Don't add explanation** - keep options concise.
+Keep options concise and explain any specific approval boundary the user needs to decide.
 
 ### Step 5: Execute Choice
 
@@ -208,7 +212,7 @@ git worktree prune  # Self-healing: clean up any stale registrations
 
 **Open-ended questions**
 - **Problem:** "What should I do next?" is ambiguous
-- **Fix:** Present exactly 4 structured options (or 3 for detached HEAD)
+- **Fix:** Reuse an authorized choice; offer structured options only when the delivery target remains materially unresolved.
 
 **Cleaning up worktree for Option 2**
 - **Problem:** Remove worktree user needs for PR iteration
@@ -244,7 +248,7 @@ git worktree prune  # Self-healing: clean up any stale registrations
 **Always:**
 - Verify tests before offering options
 - Detect environment before presenting menu
-- Present exactly 4 options (or 3 for detached HEAD)
+- Reuse an authorized delivery choice; ask only for an unresolved choice or a still-required approval
 - Get typed confirmation for Option 4
 - Clean up worktree for Options 1 & 4 only
 - `cd` to main repo root before worktree removal

@@ -26,6 +26,8 @@ Write the test first. Watch it fail. Write minimal code to pass.
 - Generated code
 - Configuration files
 
+Reuse an explicit exception already approved for this task and scope; do not ask again per file or session. An exception must actually cover the work. New exceptions still require permission, and approval to implement is not by itself approval to skip TDD.
+
 Thinking "skip TDD just this once"? Stop. That's rationalization.
 
 ## The Iron Law
@@ -35,6 +37,8 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 ```
 
 Write code before the test? Delete it. Start over.
+
+This restart instruction applies only to implementation you created in the current task and can safely reconstruct. Never delete user-provided code, pre-existing edits, unrelated files, or an entire shared file to satisfy a process rule. Identify the affected changes and validation gap first; preserve other work. All later references to deleting or restarting in this skill use this same boundary.
 
 **No exceptions:**
 - Don't keep it as "reference"

@@ -12,13 +12,14 @@ Behavioral guidelines to reduce common LLM coding mistakes, derived from [Andrej
 
 ## 1. Think Before Coding
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+**Check the evidence. State material assumptions. Surface tradeoffs.**
 
 Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
+- Check the request, current code, relevant documentation, and existing decisions before asking.
+- For reversible details that do not change the goal, authorization, or acceptance criteria, follow project conventions and state material assumptions.
+- If interpretations would materially change the result or permission boundary and evidence cannot resolve them, ask a concise clarifying question.
 - If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+- Pause only work that depends on the missing answer; continue independent authorized work. Never substitute an assumption, silence, or elapsed time for a required approval.
 
 ## 2. Simplicity First
 

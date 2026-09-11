@@ -139,7 +139,7 @@ Run tests to ensure workspace starts clean:
 npm test / cargo test / pytest / go test ./...
 ```
 
-**If tests fail:** Report failures, ask whether to proceed or investigate.
+**If tests fail:** First perform authorized read-only diagnosis and environment checks. Distinguish a mistaken command, an environment issue, and a genuinely failing baseline. If implementation still requires accepting a failing baseline, report evidence and impact and obtain explicit permission before proceeding. Do not ask whether to perform routine authorized investigation.
 
 **If tests pass:** Report ready.
 
@@ -166,7 +166,7 @@ Ready to implement <feature-name>
 | Global path exists | Use it (backward compat) |
 | Directory not ignored | Add to .gitignore + commit |
 | Permission error on create | Sandbox fallback, work in place |
-| Tests fail during baseline | Report failures + ask |
+| Tests fail during baseline | Diagnose within scope; request permission before implementing on a genuinely failing baseline |
 | No package.json/Cargo.toml | Skip dependency install |
 
 ## Common Mistakes
@@ -189,7 +189,7 @@ Ready to implement <feature-name>
 ### Assuming directory location
 
 - **Problem:** Creates inconsistency, violates project conventions
-- **Fix:** Follow priority: existing > global legacy > instruction file > default
+- **Fix:** Follow priority: explicit user preference > existing project directory > existing global directory > default
 
 ### Proceeding with failing tests
 
@@ -209,7 +209,7 @@ Ready to implement <feature-name>
 **Always:**
 - Run Step 0 detection first
 - Prefer native tools over git fallback
-- Follow directory priority: existing > global legacy > instruction file > default
+- Follow directory priority: explicit user preference > existing project directory > existing global directory > default
 - Verify directory is ignored for project-local
 - Auto-detect and run project setup
 - Verify clean test baseline

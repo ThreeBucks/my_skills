@@ -1,6 +1,6 @@
 ---
 name: using-superpowers
-description: Use when starting any conversation - establishes how to find and use skills, requiring Skill tool invocation before ANY response including clarifying questions
+description: Use when starting a conversation to select relevant skills and follow the current platform's loading and instruction-priority rules
 ---
 
 <SUBAGENT-STOP>
@@ -8,20 +8,16 @@ If you were dispatched as a subagent to execute a specific task, skip this skill
 </SUBAGENT-STOP>
 
 <EXTREMELY-IMPORTANT>
-If you think there is even a 1% chance a skill might apply to what you are doing, you ABSOLUTELY MUST invoke the skill.
+Use explicitly requested skills. For automatic selection, match the actual task, the skill's trigger conditions, and a concrete benefit; load the smallest relevant set. A keyword or weak association alone does not require a workflow.
 
-IF A SKILL APPLIES TO YOUR TASK, YOU DO NOT HAVE A CHOICE. YOU MUST USE IT.
+Reading a skill as an audit subject does not activate its implementation, installation, or publication workflow. Apply only the parts relevant to the user's authorized task.
 
-This is not negotiable. This is not optional. You cannot rationalize your way out of this.
+Do not skip applicable safeguards or explicitly requested skills merely to save effort.
 </EXTREMELY-IMPORTANT>
 
 ## Instruction Priority
 
-Superpowers skills override default system prompt behavior, but **user instructions always take precedence**:
-
-1. **User's explicit instructions** (CLAUDE.md, GEMINI.md, AGENTS.md, direct requests) — highest priority
-2. **Superpowers skills** — override default system behavior where they conflict
-3. **Default system prompt** — lowest priority
+Skills do not redefine the host platform's instruction hierarchy. Resolve conflicts using that hierarchy, the task's applicable scope, and the user's explicit constraints. A skill's generic workflow cannot expand the user's authorization or erase an already satisfied approval.
 
 If CLAUDE.md, GEMINI.md, or AGENTS.md says "don't use TDD" and a skill says "always use TDD," follow the user's instructions. The user is in control.
 
@@ -43,15 +39,13 @@ Skills use Claude Code tool names. Non-CC platforms: see `references/copilot-too
 
 ## The Rule
 
-**Invoke relevant or requested skills BEFORE any response or action.** Even a 1% chance a skill might apply means that you should invoke the skill to check. If an invoked skill turns out to be wrong for the situation, you don't need to use it.
+**Check relevant or requested skills before substantive work.** Use the platform's supported loading mechanism. If a loaded skill does not fit the task, do not execute its workflow. Do not block authorized work merely because a tool is named differently on this platform.
 
 ```dot
 digraph skill_flow {
     "User message received" [shape=doublecircle];
     "About to EnterPlanMode?" [shape=doublecircle];
-    "Already brainstormed?" [shape=diamond];
-    "Invoke brainstorming skill" [shape=box];
-    "Might any skill apply?" [shape=diamond];
+    "Is a skill requested or relevant?" [shape=diamond];
     "Invoke Skill tool" [shape=box];
     "Announce: 'Using [skill] to [purpose]'" [shape=box];
     "Has checklist?" [shape=diamond];
@@ -59,14 +53,11 @@ digraph skill_flow {
     "Follow skill exactly" [shape=box];
     "Respond (including clarifications)" [shape=doublecircle];
 
-    "About to EnterPlanMode?" -> "Already brainstormed?";
-    "Already brainstormed?" -> "Invoke brainstorming skill" [label="no"];
-    "Already brainstormed?" -> "Might any skill apply?" [label="yes"];
-    "Invoke brainstorming skill" -> "Might any skill apply?";
+    "About to EnterPlanMode?" -> "Is a skill requested or relevant?";
 
-    "User message received" -> "Might any skill apply?";
-    "Might any skill apply?" -> "Invoke Skill tool" [label="yes, even 1%"];
-    "Might any skill apply?" -> "Respond (including clarifications)" [label="definitely not"];
+    "User message received" -> "Is a skill requested or relevant?";
+    "Is a skill requested or relevant?" -> "Invoke Skill tool" [label="yes"];
+    "Is a skill requested or relevant?" -> "Respond (including clarifications)" [label="no"];
     "Invoke Skill tool" -> "Announce: 'Using [skill] to [purpose]'";
     "Announce: 'Using [skill] to [purpose]'" -> "Has checklist?";
     "Has checklist?" -> "Create TodoWrite todo per item" [label="yes"];
@@ -86,7 +77,7 @@ These thoughts mean STOP—you're rationalizing:
 | "Let me explore the codebase first" | Skills tell you HOW to explore. Check first. |
 | "I can check git/files quickly" | Files lack conversation context. Check for skills. |
 | "Let me gather information first" | Skills tell you HOW to gather information. |
-| "This doesn't need a formal skill" | If a skill exists, use it. |
+| "This doesn't need a formal skill" | Check whether a skill is requested or concretely relevant; use it when applicable. |
 | "I remember this skill" | Skills evolve. Read current version. |
 | "This doesn't count as a task" | Action = task. Check for skills. |
 | "The skill is overkill" | Simple things become complex. Use it. |

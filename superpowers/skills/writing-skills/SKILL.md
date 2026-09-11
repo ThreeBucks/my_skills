@@ -379,8 +379,12 @@ NO SKILL WITHOUT A FAILING TEST FIRST
 
 This applies to NEW skills AND EDITS to existing skills.
 
+Scope this workflow to the request: reading a skill for an audit does not authorize editing, installing, committing, pushing, or publishing it. A local edit request authorizes the relevant edit and validation, not deployment. Reuse explicit authorization for the same deliverable; preserve separate installation and publication requirements.
+
 Write skill before testing? Delete it. Start over.
 Edit skill without testing? Same violation.
+
+Restart only the unvalidated changes you created in the current task and can safely reconstruct. Never delete user-provided content, pre-existing edits, unrelated files, or a whole shared skill directory. Identify the validation gap and preserve other work. Every later deletion/restart instruction in this skill has this same scope.
 
 **No exceptions:**
 - Not for "simple additions"
@@ -580,16 +584,16 @@ step2 [label="read file"];
 helper1, helper2, step3, pattern4
 **Why bad:** Labels should have semantic meaning
 
-## STOP: Before Moving to Next Skill
+## Before Moving to Next Skill
 
-**After writing ANY skill, you MUST STOP and complete the deployment process.**
+**After changing a skill, complete the applicable validation before treating it as ready.** Installation, commits, pushes, and publication are separate deliverables and run only when included in the user's request or existing authorization. Lack of deployment authorization does not block delivery of a validated local edit.
 
 **Do NOT:**
 - Create multiple skills in batch without testing each
 - Move to next skill before current one is verified
 - Skip testing because "batching is more efficient"
 
-**The deployment checklist below is MANDATORY for EACH skill.**
+**The validation checklist below applies to each changed skill; deployment items apply only to authorized deployment work.**
 
 Deploying untested skills = deploying untested code. It's a violation of quality standards.
 
@@ -629,8 +633,9 @@ Deploying untested skills = deploying untested code. It's a violation of quality
 - [ ] Supporting files only for tools or heavy reference
 
 **Deployment:**
-- [ ] Commit skill to git and push to your fork (if configured)
-- [ ] Consider contributing back via PR (if broadly useful)
+- [ ] If requested or already authorized, install or commit the validated skill in the specified destination
+- [ ] Push or publish only to an explicitly authorized destination and audience; a configured fork is not permission
+- [ ] For an authorized upstream PR, preserve that repository's final diff-review and approval requirements
 
 ## Discovery Workflow
 

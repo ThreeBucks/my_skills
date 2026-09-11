@@ -133,7 +133,9 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 
 ## Execution Handoff
 
-After saving the plan, offer execution choice:
+After saving the plan, follow the user's requested stopping point. If the request was plan-only or review-before-implementation, deliver the plan and preserve that gate. If execution is already authorized, reuse the chosen execution method; when no method is specified, choose an available and authorized method suited to the task and continue. Tool availability alone does not authorize delegation. Ask about execution method only when an unresolved choice materially affects the task, cost, or permissions.
+
+When a choice is actually needed, offer the applicable options:
 
 **"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Two execution options:**
 
