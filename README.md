@@ -1,188 +1,125 @@
 # my_skills
 
-个人本地 skill 集合，主要面向 Codex 使用。
+面向 PiCode 的通用工程工作流集合：规定如何调研、设计、实施、评审和交付，不承载项目知识、领域排障手册或平台工具实现。正式集合从 24 个入口收敛为 **8 个**，默认只加载 **dev-baseline**。
 
-## Codex 安装
+## 八个入口
 
-在当前仓库中执行下面的命令，即可安装或更新所有 skills 和 Codex plugin bundles：
+| Skill | 职责 |
+|---|---|
+| [dev-baseline](skills/dev-baseline/SKILL.md) | 上下文、授权、最小路由、工具选择与证据纪律；唯一默认 |
+| [design-workflow](skills/design-workflow/SKILL.md) | 需求澄清、方案比较、架构评估、范围与验收、会话内分解 |
+| [execute-work](skills/execute-work/SKILL.md) | 按批准范围实施，管理依赖，按需委派、并行和隔离 |
+| [systematic-debugging](skills/systematic-debugging/SKILL.md) | 通用诊断方法，不包含领域知识 |
+| [test-driven-development](skills/test-driven-development/SKILL.md) | 适用行为变更的 RED → GREEN → REFACTOR |
+| [code-review-workflow](skills/code-review-workflow/SKILL.md) | 发起/执行/接收评审，覆盖未提交变更与反馈核实 |
+| [doc-coauthoring](skills/doc-coauthoring/SKILL.md) | 通用取证、技术文档、直接成稿或迭代共创、配图与读者检查 |
+| [verification-before-completion](skills/verification-before-completion/SKILL.md) | 当前状态的验收证据、准确声明结果、已授权交付与清理 |
 
-```bash
-./install-codex.sh
-```
+每个任务选一个主流程，按需补充方法，不串联全部技能。设计决定方案，写作表达方案；TDD、代码评审和最终验证互不替代。
 
-只预览安装动作，不写入任何文件：
+## 默认约定
 
-```bash
-./install-codex.sh --dry-run
-```
+- 规划在会话与宿主任务列表中进行，不自动创建本地 plan/spec/progress/findings 文件。
+- 正式设计文档、配图及必要构建产物仍按用户指定目标交付，不附带另一套过程材料。
+- 复用已有审批，仅为新增范围确认；仅暂停依赖阻塞的部分。
+- 专用文件工具优先；RTK 不再是默认依赖，软件不被卸载，可以按需摘要输出。
+- worktree、子代理、依赖安装、提交、推送和发布不是默认必经步骤。
+- 通用方法留在此仓库；领域技能和环境规则由目标项目提供。
+- 飞书等平台的鉴权、执行与交付门交给平台能力；不复制实现、不绕过质量要求。
 
-安装脚本会做两类同步：
+## PiCode 安装与更新
 
-- 将根目录下的独立 skills 复制到 `${CODEX_HOME:-~/.codex}/skills`。
-- 将 Codex plugin bundles 复制到 `~/plugins`，更新
-  `${AGENTS_HOME:-~/.agents}/plugins/marketplace.json`，并在检测到
-  `codex` CLI 时执行 `codex plugin add <plugin>@personal` 做正式注册。
-
-如果 `codex` CLI 不在 `PATH`，脚本会继续尝试这些位置：
-
-- `CODEX_CLI_PATH`
-- `VSCODE_AGENT_FOLDER/extensions/openai.chatgpt-*/bin/**/codex`
-- `VSCODE_EXTENSIONS/openai.chatgpt-*/bin/**/codex`
-- `~/.vscode/extensions/openai.chatgpt-*/bin/**/codex`
-- `~/.vscode-server/extensions/openai.chatgpt-*/bin/**/codex`
-- `~/.vscode-server-insiders/extensions/openai.chatgpt-*/bin/**/codex`
-- `~/.vscode-remote/extensions/openai.chatgpt-*/bin/**/codex`
-- macOS 的 `/Applications/Codex.app/Contents/Resources/codex`
-
-仍找不到时，脚本不会失败：它会继续完成 skills、plugin 文件和 marketplace 元数据同步，并跳过 `codex plugin add`。这种情况下独立 skills 会安装好，但 plugin bundles 不会完成 Codex 正式注册。远端安装 plugin 时建议使用 `--require-codex-cli`，这样找不到 VSCode 里的 `codex` 会直接报错，避免误以为 plugin 已注册。
-
-如果远端确实有 `codex` CLI 但脚本没找到，可以显式指定：
-
-```bash
-CODEX_CLI_PATH=/path/to/codex ./install-codex.sh
-```
-
-如果你希望找不到 `codex` CLI 时直接失败，使用：
-
-```bash
-./install-codex.sh --require-codex-cli
-```
-
-如果只想同步文件和 marketplace 元数据，不执行 `codex plugin add`，使用：
-
-```bash
-./install-codex.sh --no-plugin-add
-```
-
-安装脚本会给每个安装目标写入 `.my-skills-install.json` 标记。再次安装时，只有带有当前仓库标记的同名目录会被自动更新；如果目标位置已经存在同名 skill 或 plugin，但没有当前仓库标记，脚本会拒绝覆盖，避免误伤你手工安装或其他来源安装的内容。
-
-如果确认要接管并覆盖这些同名目标，使用：
-
-```bash
-./install-codex.sh --force
-```
-
-安装完成后，开启一个新的 Codex thread，让新安装的 skills 和 plugins 被加载。
-
-## Codex 卸载
-
-卸载由当前仓库安装到 Codex 的 skills 和 plugin bundles：
-
-```bash
-./uninstall-codex.sh
-```
-
-只预览卸载动作，不删除任何文件：
-
-```bash
-./uninstall-codex.sh --dry-run
-```
-
-卸载脚本会做三类清理：
-
-- 删除 `${CODEX_HOME:-~/.codex}/skills` 下与当前仓库同名的独立 skills。
-- 删除 `~/plugins` 下与当前仓库同名的 Codex plugin bundles。
-- 从 `${AGENTS_HOME:-~/.agents}/plugins/marketplace.json` 中移除对应的本地 plugin 条目，并在检测到 `codex` CLI 时执行 `codex plugin remove <plugin>@personal`。
-
-如果 `codex` CLI 不在 `PATH`，可以通过 `CODEX_CLI_PATH=/path/to/codex ./uninstall-codex.sh` 显式指定；仍找不到时脚本不会失败，会继续删除本地文件和 marketplace 元数据，并跳过 `codex plugin remove`。
-
-如果你希望找不到 `codex` CLI 时直接失败，使用：
-
-```bash
-./uninstall-codex.sh --require-codex-cli
-```
-
-如果只想删除文件和 marketplace 元数据，不执行 `codex plugin remove`，使用：
-
-```bash
-./uninstall-codex.sh --no-plugin-remove
-```
-
-卸载脚本默认只删除带有当前仓库 `.my-skills-install.json` 标记的目录；没有标记的同名 skill 或 plugin 会被跳过。这样可以避免误删同名但来源不同的内容。
-
-如果确认要强制删除同名目标，使用：
-
-```bash
-./uninstall-codex.sh --force
-```
-
-卸载完成后，开启一个新的 Codex thread，让已移除的 skills 和 plugins 不再被加载。
-
-## Picode 安装
-
-在当前仓库中执行下面的命令，即可安装或更新所有适配 Picode 的 skills：
-
-```bash
-./install-picode.sh
-```
-
-只预览安装动作，不写入任何文件：
+需要 Python 3.9+。安装是独立部署动作，先预览：
 
 ```bash
 ./install-picode.sh --dry-run
 ```
 
-安装脚本会做两类同步：
+确认目标与变更后安装全部八项：
 
-- 将根目录下的独立 skills 复制到 `${PICODE_HOME:-~/.picode}/skills`。
-- 将 Codex plugin bundles 中的 `skills/*` 展开为 Picode 单个 skills，并复制到 `${PICODE_HOME:-~/.picode}/skills`。
+```bash
+./install-picode.sh
+```
 
-Picode 没有 Codex plugin 注册概念，所以 `superpowers`、`ok-skills` 这类 bundle 不会作为整体 plugin 安装；其中每个 `SKILL.md` 会作为独立 Picode skill 安装。
+精选安装或排除技能：
 
-安装脚本会更新 `${PICODE_HOME:-~/.picode}/picode.md` 中由当前仓库维护的默认加载 block，让 Picode 新会话默认加载：
+```bash
+./install-picode.sh --only dev-baseline,doc-coauthoring
+./install-picode.sh --exclude systematic-debugging --dry-run
+```
 
-- `dev-baseline`
-- `karpathy-guidelines`
-- `rtk`
+`--only`、`--exclude` 接受逗号列表，可重复。仅选择文档技能不会自动安装底座或写入指向不存在底座的默认项；只安装部分技能时，其他未安装能力需由宿主已有技能提供，不能假装可用。
 
-如果不想改 `picode.md`，使用：
+默认目标是 `${PICODE_HOME:-~/.picode}/skills`。`--picode-home` 可指定隔离 home，`--skills-dir` 可指定该 home 下相对目录或专用绝对目录。拒绝路径穿越、符号链接、根目录和与源码重叠的目标。
+
+安装器只读取正式 `skills/*/SKILL.md`，校验入口名称与目录一致；来源目录缺入口或格式不符合约定时先报错，不将来源损坏当成退役。不展开 legacy/plugin bundles。
+
+每个安装目录写 `.my-skills-install.json`。新版 manifest v2 记录文件内容摘要和常规权限位（含技能根目录及子目录）；不记录 ACL 或所有者。普通更新只替换来源一致且本地内容、文件集合和权限均未修改的受管目录。来源与已安装状态一致时输出 `unchanged`，不重写目录。
+
+预览和执行使用同一份内存操作清单，列出目标、状态、动作、原因与汇总。有多项冲突时一次报告，不只显示第一项；任何预检冲突都不修改安装项和默认配置。无关第三方链接或坏 marker 只提示并保留，但选中的同名目标仍严格拒绝处理。
+
+### 默认加载
+
+安装器仅更新 `picode.md` 中自己维护的标记块，默认只有实际已安装的 `dev-baseline`。用户手写内容保持不变；旧默认引用会提示人工检查。
 
 ```bash
 ./install-picode.sh --no-defaults
 ```
 
-安装脚本会给每个安装目标写入 `.my-skills-install.json` 标记。再次安装时，只有带有当前仓库标记的同名目录会被自动更新；如果目标位置已经存在同名 skill，但没有当前仓库标记，脚本会拒绝覆盖，避免误伤你手工安装或其他来源安装的内容。
+该选项完全不更新默认配置。安装后启动新 PiCode 会话并核对实际解析路径；本仓库不会删除 Hub 同名技能，也不保证整个宿主只显示八个技能。
 
-如果确认要接管并覆盖这些同名目标，使用：
+### 旧版本迁移
 
-```bash
-./install-picode.sh --force
-```
-
-安装完成后，开启一个新的 Picode 会话，让新安装的 skills 被加载。
-
-## Picode 卸载
-
-卸载由当前仓库安装到 Picode 的 skills：
+旧版本 marker 无摘要或仅有 manifest v1 内容摘要，不能证明权限未被修改，预览会列出旧格式并说明需要确认。先检查来源、差异并保存需要的修改，再显式确认；`--force` 不是自动迁移前置。
 
 ```bash
-./uninstall-picode.sh
+# 先列出完整迁移状态与冲突，不写入
+./install-picode.sh --prune --dry-run
+# 核对旧版本/本地修改后，可预览显式确认后的动作
+./install-picode.sh --prune --force --dry-run
 ```
 
-只预览卸载动作，不删除任何文件：
+- `--prune` 仅清理明确退役名单内、且标记属于本仓库的安装项；不会删除因 `--only` 未选中的现役技能。未知的来源缺失项保留并提示，不自动退役。
+- `--force` 仅确认覆盖/删除本仓库受管项的本地修改或旧 marker。**不同于旧版，它不能接管无标记或其他来源目录。**
+- 预览命令没有授权真实删除；确认后移除 `--dry-run` 才会执行。不要让 agent 自动追加 `--force`。
+- 卸载和退役清理枚举安装标记，不依赖旧源码目录仍存在。
+- 所有目标和配置先预检；发现冲突不会先安装一半。单项更新在切换成功前保留旧目录，切换失败时尝试恢复；恢复失败会保留备份并报告路径，不能把失败备份当临时文件清掉。
+- 这不是完整批次事务：先完成的项目不因后续失败自动回滚，也不承诺断电、磁盘损坏或外部并发修改下的恢复。默认配置最后更新，失败后应先检查实际状态再重试。
+- 来源身份仍包含仓库绝对路径。搬迁仓库后，工具会报告来源不匹配而不是自动认领；尤其不能把“未识别到归属”当作卸载成功并清除默认块。需要恢复原路径或另行核对迁移，不要手改 marker 来绕过检查。
+- 领域规则退出此集合，不在迁移中自动写入领域项目。
+
+## PiCode 卸载
 
 ```bash
 ./uninstall-picode.sh --dry-run
+./uninstall-picode.sh --only doc-coauthoring --dry-run
 ```
 
-卸载脚本会删除 `${PICODE_HOME:-~/.picode}/skills` 下由当前仓库安装的 skills，并移除 `picode.md` 中由当前仓库维护的默认加载 block。没有 `.my-skills-install.json` 标记的同名 skill 会被跳过。
+确认后去掉 `--dry-run`。只卸载匹配本仓库标记的项；内容修改、权限修改、旧 marker 和符号链接同样受保护。已知现役/退役名称已不存在时输出 `already absent` 并成功返回，未知名称仍报错，同名第三方目标仍拒绝处理。默认块根据剩余受管底座调整，保留手写内容与原始换行；末尾无换行时也与新维护块分开。
 
-如果确认要强制删除同名目标，使用：
+## Codex 兼容
 
 ```bash
-./uninstall-picode.sh --force
+./install-codex.sh --dry-run
+./uninstall-codex.sh --dry-run
 ```
 
-卸载完成后，开启一个新的 Picode 会话，让已移除的 skills 不再被加载。
+Codex 只安装相同的八项到 `${CODEX_HOME:-~/.codex}/skills`，支持同样的精选、摘要保护和退役项清理。不会调用 Codex CLI、同步 bundle、修改 `~/plugins` 或 marketplace，也不自动配置 Codex 的默认加载规则。
 
-## 清单
+旧参数 `--agents-home`、`--plugin-home`、`--no-plugin-add` / `--no-plugin-remove`、`--require-codex-cli` 仅兼容解析，不再产生插件动作。**已存在的旧插件/注册不会自动清理**；如需退役，另行确认来源和授权。
 
-- `dev-baseline`：开发任务默认初始化规则。
-- `rtk`：默认 shell 命令包装规则，要求优先使用 `rtk` 和 `rtk proxy`。
-- `doc-coauthoring`：文档协作与共创工作流。
-- `karpathy-guidelines`：务实、外科式修改导向的编码准则。
-- `adadnn-dev-workflow`：AdaDnn 开发任务中的个人协作流程，要求先方案、方案写入上级 `develop_plan/`，并按项目 skill 工作。
-- `superpowers`：来自 `obra/superpowers` 的上游 Superpowers 整体 bundle。
-- `ok-skills`：从 `mxyhi/ok-skills` 中筛选出的 Codex plugin bundle。
-- `agent-skill-creator`：来自 `FrancyJGLisboa/agent-skill-creator` 的 skill 生成工具。
-- `systems-code-research-doc`：复杂系统源码调研到学习/分享文档的工作流。
+## 来源、归档与维护
+
+- [SOURCES.md](SOURCES.md)：来源、许可证位置、24 项迁移映射和更新纪律。
+- [MAINTAINING.md](MAINTAINING.md)：维护方法、结构测试和行为评估说明。
+- `legacy/`：保留旧材料和许可证；入口改名 `SKILL.retired.md`，不用于运行或安装。
+- `skills/`：唯一正式分发来源；内部参考文件保持自包含。
+
+验证：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
+git diff --check
+```
+
+安装测试只在临时目录执行。`tests/workflow_cases.py` 提供十八个行为回归场景；结构断言、行为模拟和实际工具执行是不同验证层级，不互相冒充。
